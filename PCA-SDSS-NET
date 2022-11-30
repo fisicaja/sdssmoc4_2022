@@ -1,0 +1,211 @@
+# -*- coding: utf-8 -*-
+#Created on Thu Jul 25 12:31:40 2013
+#Programa para ler SDSS-MOD4
+#@author: Anderson Ribeiro
+#------------------------------------------------------------------------------
+from pylab import *
+from numpy import *
+from scipy import *
+from matplotlib import *
+from numpy import mean,cov,double,cumsum,dot,linalg,array
+from pylab import *
+#------------------------------------------------------------------------------
+#Definindo PCA
+def princomp(A):
+# computing eigenvalues and eigenvectors of covariance matrix
+ M = (A-mean(A.T,axis=1)).T # subtract the mean (along columns)
+ [latent,coeff] = linalg.eig(cov(M)) # attention:not always sorted
+ score = dot(coeff.T,M) # projection of the data in the new space
+ return coeff,score,latent
+#------------------------------------------------------------------------------
+numero=[]
+nome=[]
+obs=[]
+nobs=[]
+mu=[]
+emu=[]
+mg=[]
+emg=[]
+mr=[]
+emr=[]
+mi=[]
+emi=[]
+mz=[]
+emz=[]
+aa=[]
+ee=[]
+ii=[]
+HH=[]
+#Baixar o arquivo "https://drive.google.com/file/d/1RUXTVc_jM9z7bTSg915OU_f9WWcXsU4z/view?usp=share_link"
+#
+ref_arquivo = open("sloan_3_4_2022.dat","r")
+
+for linha in ref_arquivo:
+    valores = linha.split()
+    if len(valores)==27:
+        numero.append(valores[0])
+        nome.append(valores[1])
+        obs.append(valores[2])
+        nobs.append(valores[3])
+        mu.append(valores[4])
+        emu.append(valores[5])
+        mg.append(valores[6])
+        emg.append(valores[7])
+        mr.append(valores[8])
+        emr.append(valores[9])
+        mi.append(valores[10])
+        emi.append(valores[11])
+        mz.append(valores[12])
+        emz.append(valores[13])
+        HH.append(valores[18])
+        aa.append(valores[21])
+        ee.append(valores[22])
+        ii.append(valores[23])
+    else:
+        numero.append(valores[0])
+        nome.append(valores[1]+valores[2])
+        obs.append(valores[3])
+        nobs.append(valores[4])
+        mu.append(valores[5])
+        emu.append(valores[6])
+        mg.append(valores[7])
+        emg.append(valores[8])
+        mr.append(valores[9])
+        emr.append(valores[10])
+        mi.append(valores[11])
+        emi.append(valores[12])
+        mz.append(valores[13])
+        emz.append(valores[14])
+        HH.append(valores[19])
+        aa.append(valores[22])
+        ee.append(valores[24])
+        ii.append(valores[24])
+
+
+
+#Calculo da cores--------------------------------------------------------------
+corr_u = ( (asarray(mu).astype(float) - asarray(mr).astype(float))  - 1.77 )
+corr_sigu = sqrt((asarray(emu).astype(float))**2 + (asarray(emr).astype(float))**2)
+#
+corr_g = ( (asarray(mg).astype(float) - asarray(mr).astype(float))  - 0.45 )
+corr_sigg = sqrt((asarray(emg).astype(float))**2 + (asarray(emr).astype(float))**2)
+#
+corr_i = ( (asarray(mr).astype(float) - asarray(mi).astype(float)) - 0.10 )
+corr_sigi = sqrt((asarray(emr).astype(float))**2 + (asarray(emi).astype(float))**2)
+#
+corr_z = ( (asarray(mr).astype(float) - asarray(mz).astype(float)) - 0.14 )
+corr_sigz = sqrt((asarray(emr).astype(float))**2 + (asarray(emz).astype(float))**2)
+#
+print("media dos erros e desvio padrao")
+print("cor u-r")
+print(mean(corr_u),std(corr_sigu))
+print("cor g-r")
+print(mean(corr_g),std(corr_sigg))
+print("cor r-i")
+print(mean(corr_i),std(corr_sigi))
+print("cor r-z")
+print(mean(corr_z),std(corr_sigz))
+#Calculo do Fluxo--------------------------------------------------------------
+fu=10**(-0.4*(corr_u))
+fus=0.921*corr_sigu*(1+corr_sigu)
+#
+fg=10**(-0.4*(corr_g))
+fgs=0.921*corr_sigg*(1+corr_sigg)
+#
+frs=sqrt(2)*asarray(emr).astype(float)
+#
+fi=10**(0.4*(corr_i))
+fis=0.921*corr_sigi*(1+corr_sigi)
+#
+fz=10**(0.4*(corr_z))
+fzs=0.921*corr_sigz*(1+corr_sigz)
+#
+fluxo  = zeros(shape=(len(fu),5))
+fluxos = zeros(shape=(len(fu),5))
+#
+fluxo[:,0]=fu
+fluxo[:,1]=fg
+fluxo[:,2]=1
+fluxo[:,3]=fi
+fluxo[:,4]=fz
+#
+fluxos[:,0]=fus
+fluxos[:,1]=fgs
+fluxos[:,2]=frs
+fluxos[:,3]=fis
+fluxos[:,4]=fzs
+#definindo centro dos fluxos
+xu=3540
+xg=4770
+xr=6230
+xi=7630
+xz=9130
+xl=[xu,xg,xr,xi,xz]
+#GRAFICO DOS FLUXOS
+#
+clf()
+nume ='76473' # para apenas um objeto
+title(nume)
+xlim(3000, 9500)
+ylim(0.4,1.4)
+xlabel('$Wavelenght (\AA)$')
+ylabel('Albedo')
+
+for i in range(0,len(fu)):
+        if numero[i]==nume: # comentar se quiser para todos 
+#            plot(xl,fluxo[i,:],) 
+            errorbar(xl,fluxo[i,:],yerr=fluxos[i,:])
+#------------------------------------------------------------------------------
+figure()
+#Calculo da componente principal-----------------------------------------------
+ID  = []
+pH  = []
+pfu = []
+pfg = []
+pfi = []
+pfz = []
+pa  = []
+pe  = []
+pi  = []
+#
+for i in range(0,len(fu)):
+     if (fus[i]<0.1) & (fgs[i]<0.1) & (fis[i]<0.1) & (fis[i]<0.1) :      
+#          if  SDSS[i,0]=='0':
+#              ID.append(SDSS[i,1])
+#          if SDSS[i,0]!='0':
+              ID.append(numero[i])
+              pfu.append(fu[i])
+              pfg.append(fg[i])
+              pfi.append(fi[i])
+              pfz.append(fz[i])
+              pH.append(float(HH[i]))
+              pa.append(float(aa[i]))
+              pe.append(float(ee[i]))
+              pi.append(float(ii[i]))
+          
+        
+MPCA=zeros(shape=(len(pfu),7))
+MPCA[:,0]=pfu
+MPCA[:,1]=pfg
+MPCA[:,2]=pfi
+MPCA[:,3]=pfz
+#
+A=MPCA
+coeff, score, latent = princomp(A)
+#------------------------------------------------------------------------------
+cmap = colors.ListedColormap(['black','blue','green',"lawngreen",'orange',"darkorange",'red','gray'])
+bounds=[8,10,12,13,14,15,16,17,18]
+norm = colors.BoundaryNorm(bounds, cmap.N)
+#------------------------------------------------------------------------------
+scatter(pa,pi,c=pH,cmap=cmap,norm=norm,s=6,edgecolor='none')
+xlim(2.0,3.4)
+ylim(0.0,0.3)
+xlabel('a')
+ylabel('sin(i)')
+#------------------------------------------------------------------------------
+scatter(score[0,:],-score[1,:],c=pH,cmap=cmap,norm=norm,s=1,edgecolor='none')
+xlim(-0.5,0.6)
+ylim(-0.6,0.5)
+xlabel('$PC_{1}$'+"   "+str(100*latent[0]/(sum(latent)))+"$\%$")
+ylabel('$PC_{2}$'+"   "+str(100*latent[1]/(sum(latent)))+"$\%$")
+#------------------------------------------------------------------------------
